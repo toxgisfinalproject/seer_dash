@@ -19,7 +19,7 @@ shinyUI(fluidPage(
     
     # Show a plot of the generated distribution
     mainPanel(
-       withSpinner(leafletOutput("distPlot"))
+       withSpinner(leafletOutput("leafletplot"))
     )
   )
 ))
