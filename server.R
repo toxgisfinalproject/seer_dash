@@ -9,27 +9,7 @@ library(tidyverse)
 library(tigris)
 library(shiny)
 library(sf)
-input<-list(state="nj",chemical="BENZENE")
-county_cancer_chem = readRDS( "cancer_county_chem_pop.rds") %>% 
-  mutate(prevalence = n/pop_est)
-
-options(tigris_class = "sf")
-state_sf <- tigris::counties(state = isolate(input$state)) %>% #it would  load faster if we had all of the objects in RAM, or at least in RDS files.
-#sf::st_simplify(TRUE, dTolerance = 10000) %>% #this reduces the size of the SF object drastically.
-    janitor::clean_names() %>% 
-  mutate(name = tolower(name))
-state_chem <- county_cancer_chem %>% 
-  filter(chemical == isolate(input$chemical) &
-           st == isolate(input$state)) %>% 
-  select(total_rel_summ,county,year) %>% 
-  ungroup() %>% 
-  distinct() %>% 
-  right_join(state_sf, by = c("county" = "name")) %>% 
-  mutate(log_total_rel = log(total_rel_summ + 0.001))
-state_joined_chem <- state_sf %>%
-  left_join(state_chem, by = c("name" = "county")) %>%
-  replace_na(list(total_rel_summ = 0)) %>% 
-  mutate(geometry = geometry.x)
+#input<-list(state="nj",chemical="BENZENE")
 ####state_chem_plot <- ggplot() +
 ####  geom_sf(data=state_chem, aes(fill=log((total_rel_summ + 0.001)/aland),group=namelsad, label=namelsad)) +
   #geom_text(aes(label = name, x = intptlon.y, y = intptlat.y), size = 2) + 
@@ -44,11 +24,34 @@ state_joined_chem <- state_sf %>%
 shinyServer(function(session, input, output) {
    
   output$leafletplot <- renderLeaflet({
+    #add layers butto.n
+    county_cancer_chem = readRDS( "cancer_county_chem_pop.rds") %>% 
+      mutate(prevalence = n/pop_est)
     
-#    USA <- raster::getData("GADM", country = "usa", level = 2)
+    options(tigris_class = "sf")
+    state_sf <- tigris::counties(state = isolate(input$state)) %>% #it would  load faster if we had all of the objects in RAM, or at least in RDS files.
+      #sf::st_simplify(TRUE, dTolerance = 10000) %>% #this reduces the size of the SF object drastically.
+      janitor::clean_names() %>% 
+      mutate(name = tolower(name))
+    
+    input$chemical
+    input$year
+    state_chem <- county_cancer_chem %>% 
+      filter(chemical == isolate(input$chemical) &
+               st == isolate(input$state), year == isolate(input$year)) %>% 
+      select(total_rel_summ,county,year) %>% 
+      ungroup() %>% 
+      distinct() %>% 
+      right_join(state_sf, by = c("county" = "name")) %>% 
+      mutate(log_total_rel = log(total_rel_summ + 0.001))
+    state_joined_chem <- state_sf %>%
+      left_join(state_chem, by = c("name" = "county")) %>%
+      replace_na(list(total_rel_summ = 0)) %>% 
+      mutate(geometry = geometry.x)
+    
     viridis_pal <- colorNumeric(palette = "viridis", domain = state_chem$log_total_rel, na.color = "grey")
     leaflet() %>% 
-      addProviderTiles("OpenStreetMap.Mapnik") %>% 
+      addProviderTiles("OpenStreetMap.Mapnik") %>% #can change this to MapBox
       addPolygons(data = state_joined_chem, stroke = FALSE, smoothFactor = 0.2, fillOpacity = 0.3,
                   fillColor = ~viridis_pal(state_chem$log_total_rel))
     
