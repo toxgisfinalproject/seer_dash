@@ -1,0 +1,2 @@
+GADM_2.8_USA_adm2.rds filter=lfs diff=lfs merge=lfs -text
+cancer_county_chem_pop.rds filter=lfs diff=lfs merge=lfs -text

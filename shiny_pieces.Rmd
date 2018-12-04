@@ -1,0 +1,18 @@
+---
+title: "Short Routines to generate reasonably sized data for shiny"
+author: "James Dalgleish"
+date: "December 3, 2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+First, we'll generate a small vector of chemical names:
+```{r}
+county_cancer_chem = readRDS( "cancer_county_chem_pop.rds") %>% 
+  mutate(prevalence = n/pop_est) #need a way to avoid reading this in twice.
+county_cancer_chem %>% pull(chemical) %>% saveRDS("chemical_names.rds")
+county_cancer_chem %>% pull(cancer) %>% saveRDS("cancer_names.rds")
+```
+
