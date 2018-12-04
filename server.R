@@ -36,6 +36,7 @@ shinyServer(function(session, input, output) {
     
     input$chemical
     input$year
+    
     state_chem <- county_cancer_chem %>% 
       filter(chemical == isolate(input$chemical) &
                st == isolate(input$state), year == isolate(input$year)) %>% 
@@ -51,7 +52,8 @@ shinyServer(function(session, input, output) {
       mutate(geometry = geometry.x)
     #end chemical layers (did this first as it just came most naturally).
     #begin cancer layer
-#    browser()
+#    browser() #there has got to be a way to skip all of this if there's no change in cancer data.
+    input$cancer
     cancer_state_subset <- county_cancer_chem %>% 
       filter(cancer == isolate(input$cancer) &
                st == isolate(input$state)) %>% 
