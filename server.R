@@ -98,15 +98,22 @@ shinyServer(function(session, input, output) {
       right_join(cancer_lm, by = "name")
 
     
-    viridis_pal <- colorNumeric(palette = "viridis", domain = state_chem[["log_total_rel"]], na.color = "grey")
+    chemical_pal <- colorNumeric(palette = "viridis", domain = state_chem[["log_total_rel"]], na.color = "grey")
     cancer_slope_pal <- colorNumeric(palette = "viridis", domain = cancer_sf_joined_lm[["estimate"]], na.color = "grey")
     leafletplot <- leaflet() %>% 
       addProviderTiles("OpenStreetMap.Mapnik") %>% #can change this to MapBox
       addPolygons(data = state_joined_chem, stroke = FALSE, smoothFactor = 0.2, fillOpacity = 0.5,
-                  fillColor = ~viridis_pal(state_chem$log_total_rel), group = "chemicals") %>% 
+                  fillColor = ~chemical_pal(state_chem[["log_total_rel"]]), group = "chemicals", popup = paste("County: ", state_joined_chem[["name"]], "<br>",
+                                                                                                              "Chemical: ", state_joined_chem[["chemical"]], "<br>",
+                                                                                                              "Amount Released: ", state_joined_chem[["total_rel_summ"]])
+                  ) %>% 
     addPolygons(data = cancer_sf_joined_lm, stroke = FALSE, smoothFactor = 0.2, fillOpacity = 0.5,
-                fillColor = ~cancer_slope_pal(cancer_sf_joined_lm$estimate), group = "cancer_slope") %>% 
-      addLayersControl(overlayGroups = c("chemicals","cancer_slope"))
+                fillColor = ~cancer_slope_pal(cancer_sf_joined_lm$estimate), group = "cancer_slope", popup = paste("County: ", cancer_sf_joined_lm[["name"]], "<br>",
+                                                                                                                   "Slope: ", cancer_sf_joined_lm[["estimate"]], "<br>",
+                                                                                                                   "Cancer: ", cancer_sf_joined_lm[["cancer"]])
+                  ) %>% 
+      addLayersControl(overlayGroups = c("chemicals","cancer_slope"))# %>% 
+#      addLegend("bottomright", pal = chemical_pal, values = ~state_chem[["log_total_rel"]])
     return(leafletplot)
   })
   
