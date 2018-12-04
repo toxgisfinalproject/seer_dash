@@ -20,6 +20,7 @@ shinyUI(fluidPage(
   # Sidebar with a slider input for number of bins 
   sidebarLayout(
     sidebarPanel(
+      selectInput("cancer","Cancer",cancer_names, "lung"),
       selectInput("chemical","Chemical",chemical_names, "BENZENE"),
       selectInput("state","State",tolower(state.abb),"nj"),
        sliderInput("year",

@@ -24,7 +24,7 @@ library(sf)
 shinyServer(function(session, input, output) {
    
   output$leafletplot <- renderLeaflet({
-    #add layers butto.n
+    #add layers button
     county_cancer_chem = readRDS( "cancer_county_chem_pop.rds") %>% 
       mutate(prevalence = n/pop_est)
     
@@ -44,18 +44,68 @@ shinyServer(function(session, input, output) {
       distinct() %>% 
       right_join(state_sf, by = c("county" = "name")) %>% 
       mutate(log_total_rel = log(total_rel_summ + 0.001))
+  
     state_joined_chem <- state_sf %>%
       left_join(state_chem, by = c("name" = "county")) %>%
       replace_na(list(total_rel_summ = 0)) %>% 
       mutate(geometry = geometry.x)
+    #end chemical layers (did this first as it just came most naturally).
+    #begin cancer layer
+#    browser()
+    cancer_state_subset <- county_cancer_chem %>% 
+      filter(cancer == isolate(input$cancer) &
+               st == isolate(input$state)) %>% 
+      select(prevalence,year,cancer) %>% 
+      spread(year,prevalence) %>% 
+      ungroup() %>% 
+      select(-chemical,-st,-cancer) %>% 
+      distinct() %>% 
+      replace_na(list(prevalence = 0)) %>% 
+      as.data.frame()
+    browser()  
+#    ca_sf[is.na(ca_sf)]<-0 #drop_na should replace this step (although I wanted to avoid it 
+    cancer_sf_joined <- state_sf %>%
+      left_join(cancer_state_subset, by=c("name" = "county")) #distinct at this step causes issues.
+
     
-    viridis_pal <- colorNumeric(palette = "viridis", domain = state_chem$log_total_rel, na.color = "grey")
-    leaflet() %>% 
+
+    #get the lowest year
+    first_year <- intersect(1987:2009,names(cancer_sf_joined)) %>% 
+      min()
+    #get the highest year
+    last_year <- intersect(1987:2009,names(cancer_sf_joined)) %>% 
+      max()
+    #plug in below to convert to long format
+    cancer_sf_gathered <- cancer_sf_joined %>%
+      gather(key=year,value=prevalence,first_year:last_year)
+    # 
+    # 
+    # 
+    cancer_lm <- cancer_sf_gathered %>%
+      replace_na(list(prevalence = 0)) %>%
+      mutate(year = as.numeric(year)) %>%
+      group_by(name) %>%
+      mutate(prev_kurt = e1071::kurtosis(prevalence)) %>%
+      nest() %>%
+      mutate(county_prev_lm = map(data, ~lm(formula = prevalence ~ year, data = .x)) ) %>%
+      mutate(lm_tidy = map(county_prev_lm, broom::tidy, conf.int = TRUE)) %>%
+      select(-data, -county_prev_lm) %>%
+      unnest() %>%
+      filter(term == "year")
+    cancer_sf_joined_lm <- cancer_sf_joined %>% 
+      right_join(cancer_lm, by = "name")
+
+    
+    viridis_pal <- colorNumeric(palette = "viridis", domain = state_chem[["log_total_rel"]], na.color = "grey")
+    cancer_slope_pal <- colorNumeric(palette = "viridis", domain = cancer_sf_joined_lm[["estimate"]], na.color = "grey")
+    leafletplot <- leaflet() %>% 
       addProviderTiles("OpenStreetMap.Mapnik") %>% #can change this to MapBox
-      addPolygons(data = state_joined_chem, stroke = FALSE, smoothFactor = 0.2, fillOpacity = 0.3,
-                  fillColor = ~viridis_pal(state_chem$log_total_rel))
-    
-    
+      addPolygons(data = state_joined_chem, stroke = FALSE, smoothFactor = 0.2, fillOpacity = 0.5,
+                  fillColor = ~viridis_pal(state_chem$log_total_rel), group = "chemicals") %>% 
+    addPolygons(data = cancer_sf_joined_lm, stroke = FALSE, smoothFactor = 0.2, fillOpacity = 0.5,
+                fillColor = ~cancer_slope_pal(cancer_sf_joined_lm$estimate), group = "cancer_slope") %>% 
+      addLayersControl(overlayGroups = c("chemicals","cancer_slope"))
+    return(leafletplot)
   })
   
 })
