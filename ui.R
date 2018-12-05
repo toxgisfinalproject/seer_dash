@@ -2,6 +2,7 @@ library(leaflet)
 library(shiny)
 library(shinycssloaders)
 library(tidyverse)
+library(plotly)
 county_cancer_chem = readRDS( "cancer_county_chem_pop.rds") %>% 
   mutate(prevalence = n/pop_est) #need a way to avoid reading this in twice.
 # Define UI for application that draws a histogram
@@ -27,12 +28,15 @@ shinyUI(fluidPage(
                    "Year:",
                    min = 1987,
                    max = 2009,
-                   value = 2001)
+                   value = 2001),
+      actionButton("plot","create plots")
     ),
     
     # Show a plot of the generated distribution
     mainPanel(
-       withSpinner(leafletOutput("leafletplot"))
+       withSpinner(leafletOutput("leafletplot")),
+       withSpinner(plotlyOutput("state_line_plot")),
+       withSpinner(plotlyOutput("stacked_yearly_release"))
     )
   )
 ))

@@ -1,4 +1,4 @@
-
+library(shinyLP)
 library(leaflet)
 library(magrittr)
 library(rgdal)
@@ -22,11 +22,11 @@ library(sf)
 # Define server logic required to draw a histogram
 #I think I'll try leaflet here. It's just not fast enough with ggplot.
 shinyServer(function(session, input, output) {
-   
+  county_cancer_chem = readRDS( "cancer_county_chem_pop.rds") %>% 
+    mutate(prevalence = n/pop_est)
+  
   output$leafletplot <- renderLeaflet({
     #add layers button
-    county_cancer_chem = readRDS( "cancer_county_chem_pop.rds") %>% 
-      mutate(prevalence = n/pop_est)
     
     options(tigris_class = "sf")
     state_sf <- tigris::counties(state = isolate(input$state)) %>% #it would  load faster if we had all of the objects in RAM, or at least in RDS files.
@@ -97,7 +97,7 @@ shinyServer(function(session, input, output) {
     cancer_sf_joined_lm <- cancer_sf_joined %>% 
       right_join(cancer_lm, by = "name")
 
-    
+    browser()
     chemical_pal <- colorNumeric(palette = "viridis", domain = state_chem[["log_total_rel"]], na.color = "grey")
     cancer_slope_pal <- colorNumeric(palette = "viridis", domain = cancer_sf_joined_lm[["estimate"]], na.color = "grey")
     leafletplot <- leaflet() %>% 
@@ -112,9 +112,57 @@ shinyServer(function(session, input, output) {
                                                                                                                    "Slope: ", cancer_sf_joined_lm[["estimate"]], "<br>",
                                                                                                                    "Cancer: ", cancer_sf_joined_lm[["cancer"]])
                   ) %>% 
-      addLayersControl(overlayGroups = c("chemicals","cancer_slope"))# %>% 
-#      addLegend("bottomright", pal = chemical_pal, values = ~state_chem[["log_total_rel"]])
+      addLayersControl(overlayGroups = c("chemicals","cancer_slope")) %>% 
+      addLegend("bottomright", pal = chemical_pal, values = state_chem[["log_total_rel"]], title = "log total releases (log pounds)") %>% 
+    addLegend("bottomleft", pal = cancer_slope_pal, values = rank(cancer_sf_joined_lm[["estimate"]]), title = "slope estimate")
     return(leafletplot)
   })
+output$state_line_plot <- renderPlotly({
+  input$cancer
+  cancer_yearly = county_cancer_chem %>%
+    filter(cancer == isolate(input$cancer)) %>%
+    group_by(year, st) %>%
+    summarize(new_cases = sum(n),
+              pop_est = sum(pop_est)) %>%
+    mutate(pop_est_thousands = pop_est/100000,
+           incidence = new_cases/pop_est_thousands,
+           st = toupper(st))
+  st_ggplot <- cancer_yearly %>%
+    ggplot(aes(x = year, y = incidence, color = st)) +
+    geom_line() +
+    labs(
+      x = "Year",
+      y = "Cancer Incidence per 100,000 people"
+    ) + 
+     theme_bw() 
   
+  st_ggplot %>% plotly::ggplotly()
+ })
+tri_df <- read_csv("tri_df_analysis.csv")
+output$stacked_yearly_release <- renderPlotly({
+stacked_yearly_release = tri_df %>% 
+  filter(chemical == isolate(input$chemical),
+         state == (isolate(input$state) %>%
+                     toupper()) ) %>% 
+  group_by(year) %>% 
+  summarize(air = round(sum(air_onsite_release)/1000000, digits = 3),
+            water = round(sum(water_onsite_release)/1000000, digits = 3),
+            land = round(sum(land_onsite_release, na.rm = TRUE)/1000000, digits = 3),
+            offsite = round(sum(off_site_release_total)/1000000, digits = 3),
+            total_release = round(sum(total_releases)/1000000, digits = 3)) %>% 
+  arrange(-total_release) %>% 
+  gather(key = waste_release_route, value = release, air:offsite) %>% 
+  mutate(waste_release_route = fct_relevel(waste_release_route, 
+                                           "offsite","land", "water", "air")) %>%
+   ggplot(aes(x = year, y = release, fill = waste_release_route)) +
+  geom_area(position = 'stack') + 
+  scale_color_viridis_c() + 
+  labs(
+    y = "Waste Release (Million Pounds)",
+    x = "Year"
+  ) +
+  theme_bw()
+  plotly::ggplotly(stacked_yearly_release)
+})
+
 })
