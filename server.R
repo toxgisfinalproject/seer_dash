@@ -182,6 +182,18 @@ output$lung_chem_standalone <- renderUI({
   print(plotly_iframe)
   plotly_iframe
 })
+output$introduction <- renderUI({
+  
+  intro_text <- c("Slope is defined the estimate of the linear regression model 
+  constructed to predict incidence in a given county,
+  using a single predictor of year as a continuous variable,
+  multipled by 100,000 for display purposes.")
+  incidence_def <- c("Incidence: new cases per year divided by
+                    the number of persons within the county,
+                    multiplied by 100,000.")
+  HTML(paste(intro_text, incidence_def, sep = '<br/>'))
+})
+
 output$click_plot <- renderPlotly({
   #browser()
   
