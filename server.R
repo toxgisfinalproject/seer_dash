@@ -24,7 +24,7 @@ library(sf)
 shinyServer(function(session, input, output) {
   county_cancer_chem = readRDS( "cancer_county_chem_pop.rds") %>% 
     mutate(prevalence = n/pop_est)
-  
+  tri_df <- read_csv("tri_df_analysis.csv")  
   output$leafletplot <- renderLeaflet({
     #add layers button
     
@@ -64,7 +64,7 @@ shinyServer(function(session, input, output) {
       distinct() %>% 
       replace_na(list(prevalence = 0)) %>% 
       as.data.frame()
-    browser()  
+    #browser()  
 #    ca_sf[is.na(ca_sf)]<-0 #drop_na should replace this step (although I wanted to avoid it 
     cancer_sf_joined <- state_sf %>%
       left_join(cancer_state_subset, by=c("name" = "county")) #distinct at this step causes issues.
@@ -97,24 +97,34 @@ shinyServer(function(session, input, output) {
     cancer_sf_joined_lm <- cancer_sf_joined %>% 
       right_join(cancer_lm, by = "name")
 
-    browser()
+    #browser()
     chemical_pal <- colorNumeric(palette = "viridis", domain = state_chem[["log_total_rel"]], na.color = "grey")
-    cancer_slope_pal <- colorNumeric(palette = "viridis", domain = cancer_sf_joined_lm[["estimate"]], na.color = "grey")
+    cancer_slope_pal <- colorNumeric(palette = "viridis", domain = cancer_sf_joined_lm[["estimate"]]*1e5, na.color = "grey")
+    browser()
+  tri_df_filtered  <- tri_df %>% 
+      filter(chemical == isolate(input$chemical),
+             state == (isolate(input$state) %>%
+                         toupper()) ) 
     leafletplot <- leaflet() %>% 
       addProviderTiles("OpenStreetMap.Mapnik") %>% #can change this to MapBox
       addPolygons(data = state_joined_chem, stroke = FALSE, smoothFactor = 0.2, fillOpacity = 0.5,
-                  fillColor = ~chemical_pal(state_chem[["log_total_rel"]]), group = "chemicals", popup = paste("County: ", state_joined_chem[["name"]], "<br>",
-                                                                                                              "Chemical: ", state_joined_chem[["chemical"]], "<br>",
-                                                                                                              "Amount Released: ", state_joined_chem[["total_rel_summ"]])
+                  fillColor = ~chemical_pal(state_chem[["log_total_rel"]]), group = "chemicals",
+                  popup = paste("County: ", state_joined_chem[["name"]], "<br>",
+                  "Chemical: ", state_joined_chem[["chemical"]], "<br>", "Amount Released: ",
+                  state_joined_chem[["total_rel_summ"]])
                   ) %>% 
     addPolygons(data = cancer_sf_joined_lm, stroke = FALSE, smoothFactor = 0.2, fillOpacity = 0.5,
                 fillColor = ~cancer_slope_pal(cancer_sf_joined_lm$estimate), group = "cancer_slope", popup = paste("County: ", cancer_sf_joined_lm[["name"]], "<br>",
                                                                                                                    "Slope: ", cancer_sf_joined_lm[["estimate"]], "<br>",
                                                                                                                    "Cancer: ", cancer_sf_joined_lm[["cancer"]])
                   ) %>% 
-      addLayersControl(overlayGroups = c("chemicals","cancer_slope")) %>% 
+      addCircles(data = tri_df_filtered, lng = ~longitude, lat = ~latitude, radius = ~air_onsite_release, group = "air_releases") %>% 
+      addCircles(data = tri_df_filtered, lng = ~longitude, lat = ~latitude, radius = ~water_onsite_release, group = "water_releases") %>% 
+      addCircles(data = tri_df_filtered, lng = ~longitude, lat = ~latitude, radius = ~land_onsite_release, group = "land_releases") %>% 
+      addLayersControl(overlayGroups = c("chemicals","cancer_slope","air_releases","water_releases","land_releases")) %>% 
       addLegend("bottomright", pal = chemical_pal, values = state_chem[["log_total_rel"]], title = "log total releases (log pounds)") %>% 
-    addLegend("bottomleft", pal = cancer_slope_pal, values = rank(cancer_sf_joined_lm[["estimate"]]), title = "slope estimate")
+    addLegend("bottomleft", pal = cancer_slope_pal, values = cancer_sf_joined_lm[["estimate"]]*1e5, title = "slope estimate")  
+    
     return(leafletplot)
   })
 output$state_line_plot <- renderPlotly({
@@ -138,8 +148,10 @@ output$state_line_plot <- renderPlotly({
   
   st_ggplot %>% plotly::ggplotly()
  })
-tri_df <- read_csv("tri_df_analysis.csv")
+
 output$stacked_yearly_release <- renderPlotly({
+  input$chemical
+  input$state
 stacked_yearly_release = tri_df %>% 
   filter(chemical == isolate(input$chemical),
          state == (isolate(input$state) %>%
@@ -163,6 +175,16 @@ stacked_yearly_release = tri_df %>%
   ) +
   theme_bw()
   plotly::ggplotly(stacked_yearly_release)
+})
+output$lung_chem_standalone <- renderUI({
+  #browser()
+  plotly_iframe <- tags$iframe(src = "lung_chem_scatter_plotly.html", height=1024, width=768)
+  print(plotly_iframe)
+  plotly_iframe
+})
+output$click_plot <- renderPlotly({
+  #browser()
+  
 })
 
 })

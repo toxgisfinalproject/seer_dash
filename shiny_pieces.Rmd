@@ -7,12 +7,18 @@ output: html_document
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
 ```
-First, we'll generate a small vector of chemical names:
+First, we'll generate a small vector of chemical names to go into the UI portion of the app (in the selectInput for chemicals and cancer names):
 ```{r}
 county_cancer_chem = readRDS( "cancer_county_chem_pop.rds") %>% 
   mutate(prevalence = n/pop_est) #need a way to avoid reading this in twice.
 county_cancer_chem %>% pull(chemical) %>% saveRDS("chemical_names.rds")
 county_cancer_chem %>% pull(cancer) %>% saveRDS("cancer_names.rds")
+```
+Now, we'll create a compressed-format version of the detailed TRI data:
+```{r}
+tri_df <- read_csv("tri_df_analysis.csv")
+saveRDS(object = tri_df, file = "tri_df.rds")
 ```
 

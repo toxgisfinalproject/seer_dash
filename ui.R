@@ -36,7 +36,8 @@ shinyUI(fluidPage(
     mainPanel(
        withSpinner(leafletOutput("leafletplot")),
        withSpinner(plotlyOutput("state_line_plot")),
-       withSpinner(plotlyOutput("stacked_yearly_release"))
+       withSpinner(plotlyOutput("stacked_yearly_release")),
+       withSpinner(htmlOutput("lung_chem_standalone"))
     )
   )
 ))
