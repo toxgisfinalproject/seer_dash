@@ -20,7 +20,7 @@ shinyUI(fluidPage(
   
   # Sidebar with a slider input for number of bins 
   sidebarLayout(
-    sidebarPanel(
+    sidebarPanel(width = 3,
       selectInput("cancer","Cancer",cancer_names, "lung"),
       selectInput("chemical","Chemical",chemical_names, "BENZENE"),
       selectInput("state","State",tolower(state.abb),"nj"),
@@ -34,10 +34,17 @@ shinyUI(fluidPage(
     
     # Show a plot of the generated distribution
     mainPanel(
-       withSpinner(leafletOutput("leafletplot")),
-       withSpinner(plotlyOutput("state_line_plot")),
-       withSpinner(plotlyOutput("stacked_yearly_release")),
-       withSpinner(htmlOutput("lung_chem_standalone"))
+      tabsetPanel(id = "tabs",
+      tabPanel("Tox-Cancer Map",
+       withSpinner(leafletOutput("leafletplot"))
+       ),
+      tabPanel("Cancer Incidence Over Time",
+        withSpinner(plotlyOutput("state_line_plot"))
+        ),
+      tabPanel("Release Categories",
+       withSpinner(plotlyOutput("stacked_yearly_release"))
+       )
+    )
     )
   )
 ))

@@ -24,7 +24,7 @@ library(sf)
 shinyServer(function(session, input, output) {
   county_cancer_chem = readRDS( "cancer_county_chem_pop.rds") %>% 
     mutate(prevalence = n/pop_est)
-  tri_df <- read_csv("tri_df_analysis.csv")  
+  tri_df <- readRDS("tri_df.rds")  
   output$leafletplot <- renderLeaflet({
     #add layers button
     
