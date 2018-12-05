@@ -29,7 +29,8 @@ shinyUI(fluidPage(
                    min = 1987,
                    max = 2009,
                    value = 2001),
-      actionButton("plot","create plots")
+      actionButton("plot","create plots"),
+      htmlOutput("introduction")
     ),
     
     # Show a plot of the generated distribution

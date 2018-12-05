@@ -100,7 +100,7 @@ shinyServer(function(session, input, output) {
     #browser()
     chemical_pal <- colorNumeric(palette = "viridis", domain = state_chem[["log_total_rel"]], na.color = "grey")
     cancer_slope_pal <- colorNumeric(palette = "viridis", domain = cancer_sf_joined_lm[["estimate"]]*1e5, na.color = "grey")
-    browser()
+    #browser()
   tri_df_filtered  <- tri_df %>% 
       filter(chemical == isolate(input$chemical),
              state == (isolate(input$state) %>%
@@ -118,9 +118,9 @@ shinyServer(function(session, input, output) {
                                                                                                                    "Slope: ", cancer_sf_joined_lm[["estimate"]], "<br>",
                                                                                                                    "Cancer: ", cancer_sf_joined_lm[["cancer"]])
                   ) %>% 
-      addCircles(data = tri_df_filtered, lng = ~longitude, lat = ~latitude, radius = ~air_onsite_release, group = "air_releases") %>% 
-      addCircles(data = tri_df_filtered, lng = ~longitude, lat = ~latitude, radius = ~water_onsite_release, group = "water_releases") %>% 
-      addCircles(data = tri_df_filtered, lng = ~longitude, lat = ~latitude, radius = ~land_onsite_release, group = "land_releases") %>% 
+      addCircles(data = tri_df_filtered, lng = ~longitude, lat = ~latitude, radius = rank(~air_onsite_release), group = "air_releases") %>% 
+      addCircles(data = tri_df_filtered, lng = ~longitude, lat = ~latitude, radius = rank(~water_onsite_release), group = "water_releases") %>% 
+      addCircles(data = tri_df_filtered, lng = ~longitude, lat = ~latitude, radius = rank(~land_onsite_release), group = "land_releases") %>% 
       addLayersControl(overlayGroups = c("chemicals","cancer_slope","air_releases","water_releases","land_releases")) %>% 
       addLegend("bottomright", pal = chemical_pal, values = state_chem[["log_total_rel"]], title = "log total releases (log pounds)") %>% 
     addLegend("bottomleft", pal = cancer_slope_pal, values = cancer_sf_joined_lm[["estimate"]]*1e5, title = "slope estimate")  
@@ -157,11 +157,11 @@ stacked_yearly_release = tri_df %>%
          state == (isolate(input$state) %>%
                      toupper()) ) %>% 
   group_by(year) %>% 
-  summarize(air = round(sum(air_onsite_release)/1000000, digits = 3),
-            water = round(sum(water_onsite_release)/1000000, digits = 3),
-            land = round(sum(land_onsite_release, na.rm = TRUE)/1000000, digits = 3),
-            offsite = round(sum(off_site_release_total)/1000000, digits = 3),
-            total_release = round(sum(total_releases)/1000000, digits = 3)) %>% 
+  summarize(air = round(sum(air_onsite_release)/1e5, digits = 3),
+            water = round(sum(water_onsite_release)/1e5, digits = 3),
+            land = round(sum(land_onsite_release, na.rm = TRUE)/1e5, digits = 3),
+            offsite = round(sum(off_site_release_total)/1e5, digits = 3),
+            total_release = round(sum(total_releases)/1e5, digits = 3)) %>% 
   arrange(-total_release) %>% 
   gather(key = waste_release_route, value = release, air:offsite) %>% 
   mutate(waste_release_route = fct_relevel(waste_release_route, 
@@ -170,7 +170,7 @@ stacked_yearly_release = tri_df %>%
   geom_area(position = 'stack') + 
   scale_color_viridis_c() + 
   labs(
-    y = "Waste Release (Million Pounds)",
+    y = "Waste Release (100,000 Pounds)",
     x = "Year"
   ) +
   theme_bw()
@@ -183,14 +183,12 @@ output$lung_chem_standalone <- renderUI({
   plotly_iframe
 })
 output$introduction <- renderUI({
-  
-  intro_text <- c("Slope is defined the estimate of the linear regression model 
-  constructed to predict incidence in a given county,
-  using a single predictor of year as a continuous variable,
-  multipled by 100,000 for display purposes.")
-  incidence_def <- c("Incidence: new cases per year divided by
-                    the number of persons within the county,
-                    multiplied by 100,000.")
+  browser()
+  intro_text <- c("<p><b>Slope</b> is defined the estimate of the linear
+  regression model with a single predictor of year as a continuous variable,
+  multipled by 100,000 for display purposes.</p>")
+  incidence_def <- c("<p><b>Incidence:</b> 
+  New cancer cases of the selected type per 100,000 persons.</p>")
   HTML(paste(intro_text, incidence_def, sep = '<br/>'))
 })
 
