@@ -27,14 +27,16 @@ shinyServer(function(session, input, output) {
   tri_df <- readRDS("tri_df.rds")  
   output$leafletplot <- renderLeaflet({
     #add layers button
-    
+    browser()
+    input$plot
+    options(tigris_use_cache = TRUE)
     options(tigris_class = "sf")
     state_sf <- tigris::counties(state = isolate(input$state)) %>% #it would  load faster if we had all of the objects in RAM, or at least in RDS files.
       #sf::st_simplify(TRUE, dTolerance = 10000) %>% #this reduces the size of the SF object drastically.
       janitor::clean_names() %>% 
       mutate(name = tolower(name))
     
-    input$plot
+    
     
     
     state_chem <- county_cancer_chem %>% 
@@ -93,7 +95,7 @@ shinyServer(function(session, input, output) {
       filter(term == "year")
     cancer_sf_joined_lm <- cancer_sf_joined %>% 
       right_join(cancer_lm, by = "name")
-    #browser()
+
     chemical_pal <- colorNumeric(palette = "viridis", domain = state_chem[["log_total_rel"]], na.color = "grey")
     cancer_slope_pal <- colorNumeric(palette = "viridis", domain = cancer_sf_joined_lm[["estimate"]]*1e5, na.color = "grey")
     #browser()
@@ -102,29 +104,37 @@ shinyServer(function(session, input, output) {
              state == (isolate(input$state) %>%
                          toupper()) ) 
     leafletplot <- leaflet() %>% 
-      addProviderTiles("OpenStreetMap.Mapnik") %>% #can change this to MapBox
-      addPolygons(data = state_joined_chem, stroke = FALSE, smoothFactor = 0.2, fillOpacity = 0.5,
+      addProviderTiles("OpenStreetMap.Mapnik") 
+       #can change this to MapBox
+    leafletplot <- leafletplot %>% addPolygons(data = state_joined_chem, stroke = FALSE, smoothFactor = 0.2, fillOpacity = 0.5,
                   fillColor = ~chemical_pal(state_chem[["log_total_rel"]]), group = "chemicals",
                   popup = paste("County: ", state_joined_chem[["name"]], "<br>",
                   "Chemical: ", state_joined_chem[["chemical"]], "<br>", "Amount Released: ",
                   state_joined_chem[["total_rel_summ"]])
-                  ) %>% 
-    addPolygons(data = cancer_sf_joined_lm, stroke = FALSE, smoothFactor = 0.2, fillOpacity = 0.5,
+                  ) 
+      leafletplot <- leafletplot %>% addPolygons(data = cancer_sf_joined_lm, stroke = FALSE, smoothFactor = 0.2, fillOpacity = 0.5,
                 fillColor = ~cancer_slope_pal(cancer_sf_joined_lm$estimate), group = "cancer_slope", popup = paste("County: ", cancer_sf_joined_lm[["name"]], "<br>",
                                                                                                                    "Slope: ", cancer_sf_joined_lm[["estimate"]], "<br>",
                                                                                                                    "Cancer: ", cancer_sf_joined_lm[["cancer"]])
-                  ) %>% 
-      addCircles(data = tri_df_filtered, lng = ~longitude, lat = ~latitude, radius = rank(~air_onsite_release), group = "air_releases") %>% 
-      addCircles(data = tri_df_filtered, lng = ~longitude, lat = ~latitude, radius = rank(~water_onsite_release), group = "water_releases") %>% 
-      addCircles(data = tri_df_filtered, lng = ~longitude, lat = ~latitude, radius = rank(~land_onsite_release), group = "land_releases") %>% 
-      addLayersControl(overlayGroups = c("chemicals","cancer_slope","air_releases","water_releases","land_releases")) %>% 
-      addLegend("bottomright", pal = chemical_pal, values = state_chem[["log_total_rel"]], title = "log total releases (log pounds)") %>% 
+                  ) 
+      leafletplot <- leafletplot %>%
+      addCircles(data = tri_df_filtered, lng = ~longitude, lat = ~latitude, radius = rank(~air_onsite_release), group = "air_releases") 
+      leafletplot <- leafletplot %>%
+        addCircles(data = tri_df_filtered, lng = ~longitude, lat = ~latitude, radius = rank(~water_onsite_release), group = "water_releases") 
+      leafletplot <- leafletplot %>% 
+      addCircles(data = tri_df_filtered, lng = ~longitude, lat = ~latitude, radius = rank(~land_onsite_release), group = "land_releases") 
+      leafletplot <- leafletplot %>% 
+      addLayersControl(overlayGroups = c("chemicals","cancer_slope","air_releases","water_releases","land_releases")) 
+      leafletplot <- leafletplot %>%
+      addLegend("bottomright", pal = chemical_pal, values = state_chem[["log_total_rel"]], title = "log total releases (log pounds)") 
+      leafletplot <- leafletplot %>%
     addLegend("bottomleft", pal = cancer_slope_pal, values = cancer_sf_joined_lm[["estimate"]]*1e5, title = "slope estimate")  
     
     return(leafletplot)
   })
 output$state_line_plot <- renderPlotly({
-  input$cancer
+  
+  input$plot
   cancer_yearly = county_cancer_chem %>%
     filter(cancer == isolate(input$cancer)) %>%
     group_by(year, st) %>%
@@ -192,7 +202,7 @@ output$click_plot <- renderPlotly({
 
   
 })
-output$chem_leaflet <- renderLeafet({
+output$chem_leaflet <- leaflet::renderLeaflet({
 
 })
 
