@@ -34,8 +34,8 @@ shinyServer(function(session, input, output) {
       janitor::clean_names() %>% 
       mutate(name = tolower(name))
     
-    input$chemical
-    input$year
+    input$plot
+    
     
     state_chem <- county_cancer_chem %>% 
       filter(chemical == isolate(input$chemical) &
@@ -53,7 +53,7 @@ shinyServer(function(session, input, output) {
     #end chemical layers (did this first as it just came most naturally).
     #begin cancer layer
 #    browser() #there has got to be a way to skip all of this if there's no change in cancer data.
-    input$cancer
+    #input$cancer
     cancer_state_subset <- county_cancer_chem %>% 
       filter(cancer == isolate(input$cancer) &
                st == isolate(input$state)) %>% 
@@ -80,9 +80,6 @@ shinyServer(function(session, input, output) {
     #plug in below to convert to long format
     cancer_sf_gathered <- cancer_sf_joined %>%
       gather(key=year,value=prevalence,first_year:last_year)
-    # 
-    # 
-    # 
     cancer_lm <- cancer_sf_gathered %>%
       replace_na(list(prevalence = 0)) %>%
       mutate(year = as.numeric(year)) %>%
@@ -96,7 +93,6 @@ shinyServer(function(session, input, output) {
       filter(term == "year")
     cancer_sf_joined_lm <- cancer_sf_joined %>% 
       right_join(cancer_lm, by = "name")
-
     #browser()
     chemical_pal <- colorNumeric(palette = "viridis", domain = state_chem[["log_total_rel"]], na.color = "grey")
     cancer_slope_pal <- colorNumeric(palette = "viridis", domain = cancer_sf_joined_lm[["estimate"]]*1e5, na.color = "grey")
@@ -193,8 +189,11 @@ output$introduction <- renderUI({
 })
 
 output$click_plot <- renderPlotly({
-  #browser()
+
   
+})
+output$chem_leaflet <- renderLeafet({
+
 })
 
 })
